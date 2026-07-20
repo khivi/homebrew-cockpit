@@ -1,11 +1,11 @@
-# Tap CI: style + audit on every push/PR. Static checks only — no tarball
-# download — so the placeholder `sha256` passes until the first `v*` release
-# fills it in. Runs on Linux; Homebrew is fully supported on ubuntu-latest.
-#
-# FOLLOW-UP (after release.yml bumps url+sha256 on the first `v*` tag): add an
-# install-test job — `brew install --build-from-source cockpit && cockpit
-# --version`. cockpit is pure Python, so it installs on Linuxbrew too; a macOS
-# runner is optional OS-parity, not a blocker.
+# Tap CI on ubuntu-latest (Homebrew is fully supported there):
+#   syntax  — `brew test-bot --only-tap-syntax` (style + audit). Static, no
+#             tarball download, so the placeholder `sha256` passes.
+#   install — real `brew install` + `cockpit --version`. Catches resource drift
+#             (textual's vendored transitive tree going stale). Auto-skips
+#             while `sha256` is the 64-zero placeholder; runs once the first
+#             `v*` release fills in url+sha. Pure Python, so Linux suffices —
+#             a macOS runner would only add OS parity.
 name: tap
 on: [push, pull_request]
 
@@ -19,3 +19,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@master
       - run: brew test-bot --only-tap-syntax
+
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: sha
+        # Skip the whole job while the formula still carries the placeholder sha.
+        run: |
+          if grep -qE 'sha256 "0{64}"' Formula/cockpit.rb; then
+            echo "placeholder=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::sha256 is still the placeholder — skipping install-test until the first v* release."
+          fi
+      - if: steps.sha.outputs.placeholder != 'true'
+        uses: Homebrew/actions/setup-homebrew@master
+      - if: steps.sha.outputs.placeholder != 'true'
+        run: |
+          brew install --build-from-source --formula ./Formula/cockpit.rb
+          cockpit --version
