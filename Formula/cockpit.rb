@@ -1,6 +1,6 @@
 # Homebrew formula for cockpit — cmux/limux workspaces backed by git worktrees.
 #
-# Install:  brew install khivi/cockpit/cockpit   (auto-taps khivi/homebrew-cockpit)
+# Install:  brew tap khivi/cockpit && brew install cockpit
 # Update:   brew upgrade cockpit
 # Works on macOS and Linux (Linuxbrew) — cockpit is pure Python (Textual TUI).
 #
