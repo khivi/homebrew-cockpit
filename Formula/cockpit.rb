@@ -78,6 +78,20 @@ class Cockpit < Formula
     virtualenv_install_with_resources
   end
 
+  def caveats
+    <<~EOS
+      One-time wiring (statusLine + Claude Code hooks/commands) is not done by
+      brew. Run it once after install:
+        cockpit setup
+
+      Before uninstalling, remove those ~/.claude entries (brew leaves them):
+        cockpit teardown
+
+      No re-setup after `brew upgrade`: `cockpit watch` re-pins its interpreter
+      on the next start.
+    EOS
+  end
+
   test do
     assert_match version.to_s, shell_output("#{bin}/cockpit --version")
   end
