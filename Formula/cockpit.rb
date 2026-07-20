@@ -78,6 +78,22 @@ class Cockpit < Formula
     virtualenv_install_with_resources
   end
 
+  def caveats
+    <<~EOS
+      Wire cockpit into Claude Code (idle-nudge hooks, /cockpit-new,
+      /cockpit-close, and the optional footer statusline):
+
+        cockpit setup
+
+      Then launch the dashboard:
+
+        cockpit watch
+
+      `cockpit watch` also repairs an existing Claude integration on start, so
+      re-run setup only to change what's enabled.
+    EOS
+  end
+
   test do
     assert_match version.to_s, shell_output("#{bin}/cockpit --version")
   end
