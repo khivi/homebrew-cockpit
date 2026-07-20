@@ -1,0 +1,21 @@
+# Tap CI: style + audit on every push/PR. Static checks only — no tarball
+# download — so the placeholder `sha256` passes until the first `v*` release
+# fills it in. Runs on Linux; Homebrew is fully supported on ubuntu-latest.
+#
+# FOLLOW-UP (after release.yml bumps url+sha256 on the first `v*` tag): add an
+# install-test job — `brew install --build-from-source cockpit && cockpit
+# --version`. cockpit is pure Python, so it installs on Linuxbrew too; a macOS
+# runner is optional OS-parity, not a blocker.
+name: tap
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - run: brew test-bot --only-tap-syntax
