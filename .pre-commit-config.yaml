@@ -1,0 +1,20 @@
+# Validate the Homebrew formula on every commit.
+#   ruby -c    — syntax check (fast, no network)
+#   brew style — Homebrew's rubocop rules (dependency order, desc, etc.)
+# Both are `system` hooks: they use the ruby / brew already on PATH, so this
+# repo needs no language toolchain bootstrap.
+repos:
+  - repo: local
+    hooks:
+      - id: ruby-syntax
+        name: ruby -c (formula syntax)
+        entry: ruby -c
+        language: system
+        files: ^Formula/.*\.rb$
+
+      - id: brew-style
+        name: brew style (formula lint)
+        entry: brew style
+        language: system
+        files: ^Formula/.*\.rb$
+        pass_filenames: true
