@@ -1,0 +1,51 @@
+# Tap CI on ubuntu-latest (Homebrew is fully supported there):
+#   syntax  — `brew test-bot --only-tap-syntax` (style + audit). Static, no
+#             tarball download, so it's safe to run on every push/PR.
+#   install — a real `brew install` from this checkout, then `cockpit --version`.
+#             This is the only check anywhere that exercises the formula's
+#             `resource` blocks: the release CI in khivi/cockpit rewrites only
+#             `url` + `sha256`, and the vendored dependency tree is regenerated
+#             by hand (`brew update-python-resources Formula/cockpit.rb`). So a
+#             dependency bump that isn't followed by that command fails HERE
+#             rather than on a user's `brew upgrade`. brew also verifies the
+#             tarball checksum on download, so a bad `sha256` fails too.
+#
+# Because it triggers on pull_request, the release bump PR that
+# bump-homebrew-formula-action opens (`update-cockpit.rb-*`) is install-tested
+# before it is merged.
+#
+# Linux suffices — cockpit and its deps are pure Python, so the resource graph
+# resolves identically. `cockpit --version` is deliberately the only smoke test:
+# `cockpit watch` exits 2 without a TTY, so the daemon can't be exercised here.
+name: tap
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - run: brew test-bot --only-tap-syntax
+
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      # Homebrew rejects `install ./Formula/cockpit.rb` ("formulae must be in a
+      # tap"), and `brew tap khivi/cockpit "$GITHUB_WORKSPACE"` collides with
+      # the tap setup-homebrew already registered against the GitHub remote
+      # ("remote mismatch"). Pointing the tap directory at this checkout is what
+      # makes the *proposed* formula the one installed — tapping by name would
+      # silently test the default branch instead.
+      - run: |
+          tap_dir="$(brew --repository)/Library/Taps/khivi/homebrew-cockpit"
+          rm -rf "$tap_dir"
+          mkdir -p "$(dirname "$tap_dir")"
+          ln -s "$GITHUB_WORKSPACE" "$tap_dir"
+          brew install --build-from-source khivi/cockpit/cockpit
+          cockpit --version
