@@ -34,17 +34,18 @@ jobs:
   install:
     runs-on: ubuntu-latest
     steps:
-      # fetch-depth: 0 — `brew tap` clones this checkout, and git refuses to
-      # clone from a shallow repository.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: Homebrew/actions/setup-homebrew@master
       # Homebrew rejects `install ./Formula/cockpit.rb` ("formulae must be in a
-      # tap"), so tap this checkout under its real name and install from that —
-      # which also exercises the same path a user's `brew tap khivi/cockpit`
-      # takes.
+      # tap"), and `brew tap khivi/cockpit "$GITHUB_WORKSPACE"` collides with
+      # the tap setup-homebrew already registered against the GitHub remote
+      # ("remote mismatch"). Pointing the tap directory at this checkout is what
+      # makes the *proposed* formula the one installed — tapping by name would
+      # silently test the default branch instead.
       - run: |
-          brew tap khivi/cockpit "$GITHUB_WORKSPACE"
+          tap_dir="$(brew --repository)/Library/Taps/khivi/homebrew-cockpit"
+          rm -rf "$tap_dir"
+          mkdir -p "$(dirname "$tap_dir")"
+          ln -s "$GITHUB_WORKSPACE" "$tap_dir"
           brew install --build-from-source khivi/cockpit/cockpit
           cockpit --version
