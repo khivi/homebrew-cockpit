@@ -1,0 +1,16 @@
+# Tap CI on ubuntu-latest (Homebrew is fully supported there):
+#   syntax — `brew test-bot --only-tap-syntax` (style + audit). Static, no
+#            tarball download, so it's safe to run on every push/PR.
+name: tap
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@master
+      - run: brew test-bot --only-tap-syntax
