@@ -17,8 +17,8 @@ class Cockpit < Formula
 
   desc "Git-worktree workspaces for cmux/limux, aligned to GitHub PRs"
   homepage "https://github.com/khivi/cockpit"
-  url "https://github.com/khivi/cockpit/archive/refs/tags/v2.17.1.tar.gz"
-  sha256 "f14ae5b26cc9abc87fb9758271814b159b8b9677cde3de207b9ca751b86e2f02"
+  url "https://github.com/khivi/cockpit/archive/refs/tags/v2.18.0.tar.gz"
+  sha256 "44c296891d2db4053f6f4c14ac75a6b9d4c9351ea885492cc5965bb23e2f3805"
   license "MIT"
 
   depends_on "gh"
