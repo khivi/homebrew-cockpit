@@ -1,8 +1,8 @@
 # Validate the Homebrew formula on every commit.
 #   ruby -c    — syntax check (fast, no network)
 #   brew style — Homebrew's rubocop rules (dependency order, desc, etc.)
-# Both are `system` hooks: they use the ruby / brew already on PATH, so this
-# repo needs no language toolchain bootstrap.
+# Both are `system` hooks: they use the ruby / brew already on PATH, so the
+# formula lints need no language toolchain bootstrap.
 repos:
   - repo: local
     hooks:
@@ -18,3 +18,18 @@ repos:
         language: system
         files: ^Formula/.*\.rb$
         pass_filenames: true
+
+# Audit the workflows, which the formula lints above never look at. Configured
+# by .github/zizmor.yml, kept in step with khivi/cockpit's. This hook is the
+# repo's one bootstrapped toolchain — pre-commit fetches it rather than reading
+# PATH — and its `rev` is the only pin .github/dependabot.yml's pip entry has to
+# bump.
+#
+# It fires on a human's commit only: bump-homebrew-formula-action commits onto
+# main from khivi/cockpit's release CI and runs no hooks. That is enough,
+# because the machine-written commits only ever touch `url` + `sha256` in the
+# formula, never .github/.
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.30.0
+    hooks:
+      - id: zizmor

@@ -28,14 +28,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Homebrew/actions/setup-homebrew@master
+        with:
+          persist-credentials: false
+      - uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
       - run: brew test-bot --only-tap-syntax
 
   install:
     runs-on: ubuntu-latest
     steps:
+      # `persist-credentials: false` on a checkout the install job then symlinks
+      # in as a tap directory: brew's own git operations against it are public
+      # fetches, and nothing here pushes.
       - uses: actions/checkout@v4
-      - uses: Homebrew/actions/setup-homebrew@master
+        with:
+          persist-credentials: false
+      - uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
       # Homebrew rejects `install ./Formula/cockpit.rb` ("formulae must be in a
       # tap"), and `brew tap khivi/cockpit "$GITHUB_WORKSPACE"` collides with
       # the tap setup-homebrew already registered against the GitHub remote

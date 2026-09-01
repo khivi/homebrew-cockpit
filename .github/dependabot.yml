@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Bump the pinned `rev` of the zizmor hook in .pre-commit-config.yaml. The
+  # repo has no requirements.txt — this ecosystem entry is here only because
+  # dependabot's pre-commit detection reads .pre-commit-config.yaml under the
+  # pip ecosystem. The two `language: system` hooks beside it pin nothing and
+  # are unaffected.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "pre-commit"]
+    # Don't propose a bump until it has been public for a week. A compromised
+    # release is usually yanked within days of publication, so the delay costs
+    # nothing at a monthly interval and drops the window in which dependabot
+    # would open a PR for one.
+    cooldown:
+      default-days: 7
+
+  # Bump action versions in .github/workflows/tap.yml. This is what makes the
+  # hash-pin policy in .github/zizmor.yml maintainable rather than a freeze —
+  # dependabot rewrites both the hash and its trailing version comment. Without
+  # it the actions stay at whatever was current the day they were pinned.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github-actions"]
+    cooldown:
+      default-days: 7
