@@ -1,0 +1,27 @@
+# zizmor (https://docs.zizmor.sh) — GitHub Actions security audits, run as the
+# `zizmor` pre-commit hook. Sibling to the formula lints in
+# .pre-commit-config.yaml, which only ever look at Formula/*.rb.
+#
+# Kept in step with khivi/cockpit's copy of this file. The two repos are one
+# supply chain: cockpit's release.yml commits the bumped `url` + `sha256`
+# straight onto this repo's main, and this repo is what every
+# `brew install cockpit` resolves through.
+
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # GitHub's own actions stay ref-pinned. They are the one publisher whose
+        # tag namespace isn't a third-party supply-chain surface, and hash-pins
+        # here would cost readability for no real reduction in exposure.
+        actions/*: ref-pin
+
+        # Everything else is hash-pinned. Unlike khivi/cockpit's workflows, what
+        # is at stake here is not a credential — this CI has `contents: read`,
+        # no PAT and no OIDC identity. It is the install job itself: that job is
+        # the *only* check anywhere that exercises the formula's `resource`
+        # blocks, so an action that can tamper with it turns the one gate
+        # standing between a stale dependency tree and a user's `brew upgrade`
+        # into a rubber stamp. A mutable tag or branch is a path to that.
+        # Dependabot's github-actions ecosystem keeps the SHAs current.
+        "*": hash-pin

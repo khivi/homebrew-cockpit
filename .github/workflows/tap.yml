@@ -1,5 +1,6 @@
 # Tap CI on ubuntu-latest (Homebrew is fully supported there):
-#   syntax  — `brew test-bot --only-tap-syntax` (style + audit). Static, no
+#   syntax  — `brew test-bot --only-tap-syntax` (style + audit), plus the one
+#             pre-commit hook that isn't already covered by it. Static, no
 #             tarball download, so it's safe to run on every push/PR.
 #   install — a real `brew install` from this checkout, then `cockpit --version`.
 #             This is the only check anywhere that exercises the formula's
@@ -28,14 +29,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Homebrew/actions/setup-homebrew@master
+        with:
+          persist-credentials: false
+      - uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
       - run: brew test-bot --only-tap-syntax
+
+      # Only the zizmor hook, not `--all-files`: `brew test-bot` above already
+      # runs `brew style`, and `ruby -c` is subsumed by it, so the other two
+      # hooks would be pure duplication. Through pre-commit rather than
+      # `uvx zizmor` so the version lives in exactly one place — the hook's
+      # `rev`, which dependabot bumps.
+      #
+      # Without this step the audit runs only where someone has run
+      # `pre-commit install`, since that writes the hook into that one clone's
+      # .git/hooks and nowhere else. A commit made from the GitHub web UI, from
+      # a clone that skipped the setup, or with `--no-verify` runs none of it.
+      # CI is the only place the check is unconditional.
+      - run: pipx run pre-commit run zizmor --all-files
 
   install:
     runs-on: ubuntu-latest
     steps:
+      # `persist-credentials: false` on a checkout the install job then symlinks
+      # in as a tap directory: brew's own git operations against it are public
+      # fetches, and nothing here pushes.
       - uses: actions/checkout@v4
-      - uses: Homebrew/actions/setup-homebrew@master
+        with:
+          persist-credentials: false
+      - uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
       # Homebrew rejects `install ./Formula/cockpit.rb` ("formulae must be in a
       # tap"), and `brew tap khivi/cockpit "$GITHUB_WORKSPACE"` collides with
       # the tap setup-homebrew already registered against the GitHub remote
