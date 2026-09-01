@@ -1,5 +1,6 @@
 # Tap CI on ubuntu-latest (Homebrew is fully supported there):
-#   syntax  — `brew test-bot --only-tap-syntax` (style + audit). Static, no
+#   syntax  — `brew test-bot --only-tap-syntax` (style + audit), plus the one
+#             pre-commit hook that isn't already covered by it. Static, no
 #             tarball download, so it's safe to run on every push/PR.
 #   install — a real `brew install` from this checkout, then `cockpit --version`.
 #             This is the only check anywhere that exercises the formula's
@@ -32,6 +33,16 @@ jobs:
           persist-credentials: false
       - uses: Homebrew/actions/setup-homebrew@3cdb78d0f62ad29dd32de765782654f4eedea607 # 2026.08.31.1
       - run: brew test-bot --only-tap-syntax
+
+      # Only the zizmor hook, not `--all-files`: `brew test-bot` above already
+      # runs `brew style`, and `ruby -c` is subsumed by it, so the other two
+      # hooks would be pure duplication. Through pre-commit rather than
+      # `uvx zizmor` so the version lives in exactly one place — the hook's
+      # `rev`, which dependabot bumps.
+      #
+      # Without this the hook is local-only, and a workflow edit that doesn't
+      # come from a machine with pre-commit installed is unaudited.
+      - run: pipx run pre-commit run zizmor --all-files
 
   install:
     runs-on: ubuntu-latest
