@@ -40,8 +40,11 @@ jobs:
       # `uvx zizmor` so the version lives in exactly one place — the hook's
       # `rev`, which dependabot bumps.
       #
-      # Without this the hook is local-only, and a workflow edit that doesn't
-      # come from a machine with pre-commit installed is unaudited.
+      # Without this step the audit runs only where someone has run
+      # `pre-commit install`, since that writes the hook into that one clone's
+      # .git/hooks and nowhere else. A commit made from the GitHub web UI, from
+      # a clone that skipped the setup, or with `--no-verify` runs none of it.
+      # CI is the only place the check is unconditional.
       - run: pipx run pre-commit run zizmor --all-files
 
   install:
