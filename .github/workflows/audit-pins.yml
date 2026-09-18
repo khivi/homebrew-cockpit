@@ -1,17 +1,13 @@
 # Advisory scan over the formula's `resource` pins — the CVE check for what
-# `brew install cockpit` actually puts on disk. These pins are the project's
-# only resolved dependency set: khivi/cockpit declares `textual>=8.2.8` with no
-# committed lockfile (deliberately — see its .gitignore), so a scanner pointed
-# there has nothing to resolve. Nothing else covers them either: Homebrew
-# resources have no dependabot ecosystem; `ruby -c` and `brew style` are offline
-# checks of the file as written; tap.yml's install job proves the pins resolve
-# and import, never that they carry no advisory.
+# `brew install cockpit` puts on disk. These pins are the project's only
+# resolved dependency set; khivi/cockpit declares `textual>=8.2.8` with no
+# lockfile, deliberately, so a scanner pointed there resolves nothing. Homebrew
+# resources have no dependabot ecosystem either.
 #
 # An advisory scan and not a freshness diff against
-# `brew update-python-resources --print-only`: a freshness check goes red the day
-# any dependency publishes and stays red through the 7-day cooldown in
-# .github/dependabot.yml, which trains you to ignore it. Red here means a known
-# vulnerability in a version users are running.
+# `brew update-python-resources --print-only`: freshness goes red the day any
+# dependency publishes and stays red through the 7-day cooldown in
+# .github/dependabot.yml, which trains you to ignore it.
 name: audit-pins
 
 on:
@@ -41,9 +37,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # The versions live in the sdist filenames, not in a field of their own,
-      # so they are read back out of the URLs. `tr` normalises the PyPI
-      # underscore spelling (linkify_it_py) to the dashed name advisories are
+      # Versions live in the sdist filenames, not a field of their own, so they
+      # come back out of the URLs; `tr` gives the dashed name advisories are
       # filed under. Derived here rather than committed as a requirements.txt,
       # which would be a second pin free to disagree with the formula's.
       - name: Extract pinned versions from the formula
