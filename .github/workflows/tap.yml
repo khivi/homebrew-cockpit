@@ -70,3 +70,8 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" "$tap_dir"
           brew install --build-from-source khivi/cockpit/cockpit
           cockpit --version
+          # `brew install` does not run the formula's `test do` block, and that
+          # block holds the only check that the resources can actually run this
+          # cockpit — `cockpit --version` above passes against a venv with no
+          # textual in it. Without this line that check exists and never runs.
+          brew test khivi/cockpit/cockpit
