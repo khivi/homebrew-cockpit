@@ -1,0 +1,83 @@
+# Advisory scan over the formula's `resource` pins — the CVE check for what
+# `brew install cockpit` actually puts on disk.
+#
+# These ten-ish pinned sdists are the only resolved dependency set anywhere in
+# the project: khivi/cockpit declares `textual>=8.2.8` with no committed
+# lockfile (deliberately — see its .gitignore), so a scanner pointed at that
+# repo has nothing to resolve and reports zero targets. This file is where the
+# versions exist, so this is where they get scanned.
+#
+# Nothing else covers this. Homebrew resources have no dependabot ecosystem;
+# `ruby -c` and `brew style` are offline checks of the file as written; and
+# tap.yml's install job proves the pins *resolve and import*, never that they
+# are free of advisories. A pin can install perfectly and still be the CVE.
+#
+# Deliberately an advisory scan and not a freshness diff against
+# `brew update-python-resources --print-only`. A freshness check goes red the
+# day any dependency publishes and stays red through the 7-day cooldown in
+# .github/dependabot.yml, which trains you to ignore it. Red here means a known
+# vulnerability in a version users are running — act on it.
+name: audit-pins
+
+on:
+  # Advisories land without anyone committing, so the schedule is the real
+  # trigger; the other two only catch a pin changing under us. NOTE: GitHub
+  # disables scheduled workflows in a repo with no commits for 60 days. Release
+  # CI commits here on every cockpit tag, so that is unlikely, but a silently
+  # disabled schedule looks exactly like a passing one.
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+  # This file is in the paths as well as the formula: a change to the extraction
+  # or the guard has to be exercised by the PR making it, or the first real run
+  # is on a schedule nobody is watching.
+  pull_request:
+    paths:
+      - Formula/cockpit.rb
+      - .github/workflows/audit-pins.yml
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The versions live in the sdist filenames, not in a field of their own,
+      # so they are read back out of the URLs. `tr` normalises the PyPI
+      # underscore spelling (linkify_it_py) to the dashed name advisories are
+      # filed under. Derived here rather than committed as a requirements.txt,
+      # which would be a second pin free to disagree with the formula's.
+      - name: Extract pinned versions from the formula
+        run: |
+          pins="$RUNNER_TEMP/pins.txt"
+          grep -oE 'https://files\.pythonhosted\.org/packages/[^"]+' Formula/cockpit.rb \
+            | sed -E 's#.*/([A-Za-z0-9_.-]+)-([0-9][A-Za-z0-9.]*)\.tar\.gz#\1==\2#' \
+            | tr '_' '-' > "$pins"
+          cat "$pins"
+
+          # An extraction that matches nothing yields an empty file, which the
+          # scanner then passes with nothing to say — a green check meaning
+          # "scanned no packages". Counting against the resource blocks catches
+          # that, and also a resource served from somewhere other than PyPI,
+          # without hardcoding a total that every legitimate bump would break.
+          found=$(grep -c '^  resource "' Formula/cockpit.rb)
+          got=$(wc -l < "$pins")
+          if [ "$got" -ne "$found" ]; then
+            echo "::error::extracted $got pins from $found resource blocks — the formula's shape changed"
+            exit 1
+          fi
+          echo "PINS=$pins" >> "$GITHUB_ENV"
+
+      # `--no-deps` treats the file as the complete, already-resolved set, which
+      # it is: the install job builds from exactly these sdists and nothing
+      # else. Without it pip-audit resolves dependencies itself and would audit
+      # *newer* transitive versions than the ones shipped. `--strict` fails the
+      # job on a package it could not check, so an unreachable advisory feed
+      # reports as a failure instead of a clean run.
+      - name: Audit against PyPI advisories
+        run: pipx run pip-audit -r "$PINS" --no-deps --strict
