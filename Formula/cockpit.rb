@@ -110,19 +110,10 @@ class Cockpit < Formula
   test do
     assert_match version.to_s, shell_output("#{bin}/cockpit --version")
 
-    # `--version` is not evidence the `resource` blocks can run this cockpit.
-    # cockpit imports lazily and returns before touching textual, so it prints a
-    # version against a venv with no textual installed at all — measured, not
-    # assumed. And because Homebrew always installs with `--no-deps`
-    # (`Formula#std_pip_args`), nothing anywhere checks these pins against
-    # cockpit's own `textual>=` floor: the resources ARE the dependency set, and
-    # a formula pinning something cockpit cannot run against installs cleanly
-    # and fails on the user's first `cockpit watch`.
-    #
-    # Importing the TUI through the venv's own interpreter is what closes that.
-    # It has to be this interpreter, not the `python3.12` on PATH, or the probe
-    # resolves against system site-packages and proves nothing about the venv.
-    # `cockpit watch` itself is not usable here — it exits 2 without a TTY.
+    # `--version` proves nothing about the resources: cockpit imports lazily and
+    # returns before touching textual, so it passes against a venv with none.
+    # Must be the venv's interpreter and not PATH's, or this resolves against
+    # system site-packages. `cockpit watch` can't serve — exits 2 with no TTY.
     system libexec/"bin/python", "-c", "import cockpit.tui.app"
   end
 end

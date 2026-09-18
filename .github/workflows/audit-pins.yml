@@ -1,29 +1,23 @@
 # Advisory scan over the formula's `resource` pins — the CVE check for what
-# `brew install cockpit` actually puts on disk.
+# `brew install cockpit` actually puts on disk. These pins are the project's
+# only resolved dependency set: khivi/cockpit declares `textual>=8.2.8` with no
+# committed lockfile (deliberately — see its .gitignore), so a scanner pointed
+# there has nothing to resolve. Nothing else covers them either: Homebrew
+# resources have no dependabot ecosystem; `ruby -c` and `brew style` are offline
+# checks of the file as written; tap.yml's install job proves the pins resolve
+# and import, never that they carry no advisory.
 #
-# These ten-ish pinned sdists are the only resolved dependency set anywhere in
-# the project: khivi/cockpit declares `textual>=8.2.8` with no committed
-# lockfile (deliberately — see its .gitignore), so a scanner pointed at that
-# repo has nothing to resolve and reports zero targets. This file is where the
-# versions exist, so this is where they get scanned.
-#
-# Nothing else covers this. Homebrew resources have no dependabot ecosystem;
-# `ruby -c` and `brew style` are offline checks of the file as written; and
-# tap.yml's install job proves the pins *resolve and import*, never that they
-# are free of advisories. A pin can install perfectly and still be the CVE.
-#
-# Deliberately an advisory scan and not a freshness diff against
-# `brew update-python-resources --print-only`. A freshness check goes red the
-# day any dependency publishes and stays red through the 7-day cooldown in
+# An advisory scan and not a freshness diff against
+# `brew update-python-resources --print-only`: a freshness check goes red the day
+# any dependency publishes and stays red through the 7-day cooldown in
 # .github/dependabot.yml, which trains you to ignore it. Red here means a known
-# vulnerability in a version users are running — act on it.
+# vulnerability in a version users are running.
 name: audit-pins
 
 on:
   # Advisories land without anyone committing, so the schedule is the real
   # trigger; the other two only catch a pin changing under us. NOTE: GitHub
-  # disables scheduled workflows in a repo with no commits for 60 days. Release
-  # CI commits here on every cockpit tag, so that is unlikely, but a silently
+  # disables scheduled workflows in a repo with no commits for 60 days, and a
   # disabled schedule looks exactly like a passing one.
   schedule:
     - cron: "17 9 * * 1"
@@ -60,11 +54,10 @@ jobs:
             | tr '_' '-' > "$pins"
           cat "$pins"
 
-          # An extraction that matches nothing yields an empty file, which the
-          # scanner then passes with nothing to say — a green check meaning
+          # An empty pin list passes with nothing to say — a green check meaning
           # "scanned no packages". Counting against the resource blocks catches
-          # that, and also a resource served from somewhere other than PyPI,
-          # without hardcoding a total that every legitimate bump would break.
+          # that, and a resource served off PyPI; a hardcoded total would break
+          # on every legitimate bump.
           found=$(grep -c '^  resource "' Formula/cockpit.rb)
           got=$(wc -l < "$pins")
           if [ "$got" -ne "$found" ]; then

@@ -6,12 +6,11 @@ ARE the dependency set, and a formula that is missing one, or pins below a
 declared floor, installs cleanly and fails on the user's first `cockpit watch`.
 This walks the requirements brew skipped.
 
-Reachability from cockpit is what defines the subject: `pip`, `setuptools` and
-`wheel` are Homebrew's venv scaffolding, not cockpit's dependencies, and a bare
-`pip check` fails on them today ("wheel requires packaging, which is not
-installed") for reasons that have nothing to do with this formula. Walking
-forward from the root visits exactly the closure and never reaches them, which
-is narrower and more honest than ignoring known-noisy lines.
+Reachability from cockpit defines the subject. A bare `pip check` would do this
+in one line, but it fails on the formula's venv today ("wheel requires
+packaging, which is not installed") — Homebrew's scaffolding, not cockpit's
+closure. Walking forward from the root never reaches pip/setuptools/wheel, so
+nothing has to be ignored.
 
 Usage: check_closure.py <site-packages-dir> [root-distribution]
 """
@@ -34,12 +33,10 @@ def installed(site_packages: str) -> dict[str, Distribution]:
 def wanted(dist: Distribution, extras: frozenset[str]) -> list[Requirement]:
     """Requirements that apply to this dist given the extras asked of it.
 
-    The extras have to be carried, not dropped: textual asks for
+    Extras must be carried, not dropped: textual asks for
     `markdown-it-py[linkify,plugins]`, and linkify-it-py is reachable ONLY
-    through that request. Evaluating every marker against `extra == ""` prunes
-    it, and then a missing linkify-it-py or uc-micro-py reads as an unused
-    resource instead of a broken closure — which is the exact staleness this
-    script exists to catch.
+    through that request. Pruning it makes a broken closure read as an unused
+    resource.
     """
     contexts = [{"extra": ""}, *({"extra": e} for e in sorted(extras))]
     out = []
@@ -93,9 +90,8 @@ def main() -> int:
         return 1
 
     # Unreachable but installed: a resource whose last consumer dropped it. Not
-    # breakage — the build works, it just carries weight and signals that
-    # `brew update-python-resources` has not been run since that dependency
-    # moved. Reported, deliberately not fatal.
+    # breakage; a staleness signal that `brew update-python-resources` has not
+    # run since that dependency moved.
     orphans = sorted(set(dists) - set(seen) - {"pip", "setuptools", "wheel"})
     for orphan in orphans:
         print(f"::warning::{orphan} {dists[orphan].version} is a resource nothing in cockpit's closure requires")

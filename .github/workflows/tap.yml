@@ -71,20 +71,13 @@ jobs:
           brew install --build-from-source khivi/cockpit/cockpit
           cockpit --version
           # `brew install` does not run the formula's `test do` block, and that
-          # block holds the only check that the resources can actually run this
-          # cockpit — `cockpit --version` above passes against a venv with no
-          # textual in it. Without this line that check exists and never runs.
+          # block holds the only check that the resources can run this cockpit —
+          # `cockpit --version` above passes against a venv with no textual.
           brew test khivi/cockpit/cockpit
 
-      # The import probe proves cockpit starts; this proves the resource set is
-      # *complete*. They are not the same: a dependency reached only at runtime,
-      # or one that a sibling resource requires and cockpit never imports
-      # directly, is missing from the formula without breaking any import. That
-      # is the real case this catches — linkify-it-py used to require
-      # uc-micro-py, and nothing connected the two.
-      #
-      # Its own venv because the check needs `packaging`, which the formula's
-      # venv deliberately does not carry. It reads that venv's metadata from
+      # Completeness, which the import probe above does not imply — rationale in
+      # check_closure.py. Its own venv: the check needs `packaging`, which the
+      # formula's venv does not carry, so it reads that venv's metadata from
       # outside rather than running inside it.
       - run: |
           python3 -m venv "$RUNNER_TEMP/checkenv"
