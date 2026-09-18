@@ -1,0 +1,71 @@
+# Advisory scan over the formula's `resource` pins — the CVE check for what
+# `brew install cockpit` puts on disk. These pins are the project's only
+# resolved dependency set; khivi/cockpit declares `textual>=8.2.8` with no
+# lockfile, deliberately, so a scanner pointed there resolves nothing. Homebrew
+# resources have no dependabot ecosystem either.
+#
+# An advisory scan and not a freshness diff against
+# `brew update-python-resources --print-only`: freshness goes red the day any
+# dependency publishes and stays red through the 7-day cooldown in
+# .github/dependabot.yml, which trains you to ignore it.
+name: audit-pins
+
+on:
+  # Advisories land without anyone committing, so the schedule is the real
+  # trigger; the other two only catch a pin changing under us. NOTE: GitHub
+  # disables scheduled workflows in a repo with no commits for 60 days, and a
+  # disabled schedule looks exactly like a passing one.
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+  # This file is in the paths as well as the formula: a change to the extraction
+  # or the guard has to be exercised by the PR making it, or the first real run
+  # is on a schedule nobody is watching.
+  pull_request:
+    paths:
+      - Formula/cockpit.rb
+      - .github/workflows/audit-pins.yml
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Versions live in the sdist filenames, not a field of their own, so they
+      # come back out of the URLs; `tr` gives the dashed name advisories are
+      # filed under. Derived here rather than committed as a requirements.txt,
+      # which would be a second pin free to disagree with the formula's.
+      - name: Extract pinned versions from the formula
+        run: |
+          pins="$RUNNER_TEMP/pins.txt"
+          grep -oE 'https://files\.pythonhosted\.org/packages/[^"]+' Formula/cockpit.rb \
+            | sed -E 's#.*/([A-Za-z0-9_.-]+)-([0-9][A-Za-z0-9.]*)\.tar\.gz#\1==\2#' \
+            | tr '_' '-' > "$pins"
+          cat "$pins"
+
+          # An empty pin list passes with nothing to say — a green check meaning
+          # "scanned no packages". Counting against the resource blocks catches
+          # that, and a resource served off PyPI; a hardcoded total would break
+          # on every legitimate bump.
+          found=$(grep -c '^  resource "' Formula/cockpit.rb)
+          got=$(wc -l < "$pins")
+          if [ "$got" -ne "$found" ]; then
+            echo "::error::extracted $got pins from $found resource blocks — the formula's shape changed"
+            exit 1
+          fi
+          echo "PINS=$pins" >> "$GITHUB_ENV"
+
+      # `--no-deps` treats the file as the complete, already-resolved set, which
+      # it is: the install job builds from exactly these sdists and nothing
+      # else. Without it pip-audit resolves dependencies itself and would audit
+      # *newer* transitive versions than the ones shipped. `--strict` fails the
+      # job on a package it could not check, so an unreachable advisory feed
+      # reports as a failure instead of a clean run.
+      - name: Audit against PyPI advisories
+        run: pipx run pip-audit -r "$PINS" --no-deps --strict

@@ -109,5 +109,11 @@ class Cockpit < Formula
 
   test do
     assert_match version.to_s, shell_output("#{bin}/cockpit --version")
+
+    # `--version` proves nothing about the resources: cockpit imports lazily and
+    # returns before touching textual, so it passes against a venv with none.
+    # Must be the venv's interpreter and not PATH's, or this resolves against
+    # system site-packages. `cockpit watch` can't serve — exits 2 with no TTY.
+    system libexec/"bin/python", "-c", "import cockpit.tui.app"
   end
 end
